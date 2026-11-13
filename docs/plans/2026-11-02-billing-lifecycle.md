@@ -1,0 +1,14 @@
+# Billing lifecycle and database commands
+
+Approved scope: fix Windows Prisma subprocess launch; add `db:deploy` and `db:status`; implement invoice.paid, customer.subscription.updated, and customer.subscription.deleted. Preserve existing checkout and creation handlers.
+
+Approved billing policy: ACTIVE only for a currently active Stripe subscription whose latest invoice is paid; TRIALING for a current trial; PAST_DUE without an ACTIVE grace period; canceled, unpaid, paused, and incomplete subscriptions do not receive active status. Scheduled cancellation alone does not end access.
+
+1. Run regression tests for Node-based Prisma CLI invocation, argument forwarding, failure reporting, and exit codes. Add the two npm scripts and verify their help output without connecting to a database.
+2. Add nullable plan, interval, Stripe price, and cancellation timestamp fields, a cancellation-at-period-end boolean, and an integer billingVersion. Add an additive migration; do not apply it.
+3. Implement controller -> subscription lifecycle service -> webhook model persistence. For updates and invoice payments, retrieve current Stripe state rather than applying an old event snapshot. Verify metadata, customer, and saved subscription identities. Only configured single-price subscriptions with a valid current period may receive active/trial status. Unknown plans fail closed.
+4. Use a conditional update on billingVersion and matching identity. Reload and refetch Stripe state on a write conflict, bounded to three attempts. Canceled/incomplete-expired subscriptions cannot be resurrected by late payment or update events. Deleted events set CANCELED without depending on a network lookup.
+5. Add regressions for all statuses, plan/period/cancellation synchronization, invoice-parent parsing, payments before creation, duplicate/reordered events, concurrent writes, identity conflicts, and provider/database failures. Keep tests isolated from real Stripe and normal databases.
+6. Generate/validate Prisma, run relevant and full backend checks, review the diff, and document the migration and deferred work. Payment-failure-specific notifications/grace periods and entitlement UI are outside this task.
+
+Verification completed: wrapper regression tests passed (13 including environment precedence), and both npm commands executed Prisma's help successfully on Windows. All 46 lifecycle regressions passed; existing checkout/creation webhook tests also passed. Prisma generation/validation, backend typecheck/build, and diff whitespace checks passed. Full backend suite: 560 tests passed, 39 skipped. The existing messaging.api and server-lifecycle suites still fail at Stripe construction because their mocked configuration lacks an API key. No isolated PostgreSQL instance was configured, so the new opt-in real concurrency test was not executed. No real Stripe requests or migrations were run; the lifecycle migration remains unapplied.

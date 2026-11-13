@@ -1,0 +1,586 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  TECH
+  ADMIN
+}
+
+enum LocationVisibility {
+  RADIUS_ONLY
+  CITY_ONLY
+  EXACT_BUSINESS_ADDRESS
+}
+
+enum ProfileMediaRole {
+  PROFILE
+  BACKGROUND
+  GALLERY
+}
+
+enum ReferralStatus {
+  PENDING
+  QUALIFIED
+  CREDITED
+}
+
+enum SubscriptionStatus {
+  FREE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum AvailabilityOverrideKind {
+  UNAVAILABLE
+  CUSTOM_HOURS
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELED
+}
+
+enum ConversationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum MessageKind {
+  REQUEST
+  TEXT
+}
+
+enum MessagingDeliveryKind {
+  REALTIME_MESSAGE
+  REALTIME_CONVERSATION
+  EMAIL_REQUEST
+  EMAIL_DECISION
+  EMAIL_MESSAGE
+}
+
+model User {
+  id                       String                    @id @default(uuid())
+  email                    String                    @unique
+  passwordHash             String?
+  role                     UserRole                  @default(CUSTOMER)
+  fullName                 String?
+  avatarUrl                String?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  sessions                 UserSession[]
+  techProfile              TechProfile?
+  reviews                  Review[]
+  reports                  Report[]
+  savedTechs               SavedTech[]               @relation("CustomerSavedTechs")
+  customerBookings         Booking[]                 @relation("CustomerBookings")
+  canceledBookings         Booking[]                 @relation("CanceledBookings")
+  customerConversations    Conversation[]            @relation("CustomerConversations")
+  conversationParticipants ConversationParticipant[]
+  sentMessages             Message[]                 @relation("SentMessages")
+  messagingBlocksCreated   MessagingBlock[]          @relation("MessagingBlocker")
+  messagingBlocksReceived  MessagingBlock[]          @relation("MessagingBlocked")
+  messagingDeliveries      MessagingDeliveryOutbox[]
+  passwordResetTokens      PasswordResetToken[]
+  bookingReschedules       BookingReschedule[]
+}
+
+model UserSession {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model TechProfile {
+  id                    String                     @id @default(uuid())
+  userId                String                     @unique
+  user                  User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName          String
+  displayName           String
+  bio                   String?
+  phone                 String?
+  email                 String?
+  instagramUrl          String?
+  tiktokUrl             String?
+  bookingUrl            String?
+  profileImageUrl       String?
+  specialties           String[]                   @default([])
+  isPublished           Boolean                    @default(false)
+  referralCode          String                     @unique
+  referredByCode        String?
+  referralCount         Int                        @default(0)
+  averageRating         Float                      @default(0)
+  reviewCount           Int                        @default(0)
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  location              TechLocation?
+  services              TechService[]
+  profileMedia          ProfileMedia[]
+  reviews               Review[]
+  referralsGiven        Referral[]                 @relation("Referrer")
+  referralReceived      Referral?                  @relation("Referred")
+  subscription          Subscription?
+  reports               Report[]
+  savedBy               SavedTech[]
+  scheduleSettings      TechScheduleSettings?
+  weeklyAvailability    WeeklyAvailabilityWindow[]
+  availabilityOverrides AvailabilityOverride[]
+  bookings              Booking[]
+  conversations         Conversation[]
+}
+
+model TechLocation {
+  id                  String             @id @default(uuid())
+  techProfileId       String             @unique
+  techProfile         TechProfile        @relation(fields: [techProfileId], references: [id], onDelete: Cascade)
+  privateAddressLine1 String?
+  privateAddressLine2 String?
+  city                String
+  state               String
+  postalCode          String?
+  country             String             @default("US")
+  latitude            Float
+  longitude           Float
+  publicLocationLabel String
+  locationVisibility  LocationVisibility @default(RADIUS_ONLY)
+  publicRadiusMiles   Int                @default(5)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+}
+
+model TechService {
+  id                 String      @id @default(uuid())
+  techProfileId      String
+  techProfile        TechProfile @relation(fields: [techProfileId], references: [id], onDelete: Cascade)
+  name               String
+  description        String?
+  startingPriceCents Int?
+  durationMinutes    Int?
+  isActive           Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  bookings           Booking[]
+
+  @@index([techProfileId])
+}
+
+model TechScheduleSettings {
+  id                        String      @id @default(uuid())
+  techProfileId             String      @unique
+  timeZone                  String
+  minimumNoticeMinutes      Int
+  maximumAdvanceDays        Int
+  bufferMinutes             Int
+  cancellationCutoffMinutes Int
+  createdAt                 DateTime    @default(now())
+  updatedAt                 DateTime    @updatedAt
+  techProfile               TechProfile @relation(fields: [techProfileId], references: [id], onDelete: Cascade)
+}
+
+model WeeklyAvailabilityWindow {
+  id            String      @id @default(uuid())
+  techProfileId String
+  weekday       Int
+  startMinute   Int
+  endMinute     Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  techProfile   TechProfile @relation(fields: [techProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([techProfileId, weekday, startMinute, endMinute])
+  @@index([techProfileId, weekday])
+}
+
+model AvailabilityOverride {
+  id            String                       @id @default(uuid())
+  techProfileId String
+  localDate     DateTime                     @db.Date
+  kind          AvailabilityOverrideKind
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
+  techProfile   TechProfile                  @relation(fields: [techProfileId], references: [id], onDelete: Cascade)
+  windows       AvailabilityOverrideWindow[]
+
+  @@unique([techProfileId, localDate])
+  @@index([techProfileId, localDate])
+}
+
+model AvailabilityOverrideWindow {
+  id                     String               @id @default(uuid())
+  availabilityOverrideId String
+  startMinute            Int
+  endMinute              Int
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  availabilityOverride   AvailabilityOverride @relation(fields: [availabilityOverrideId], references: [id], onDelete: Cascade)
+
+  @@unique([availabilityOverrideId, startMinute, endMinute])
+  @@index([availabilityOverrideId])
+}
+
+model Booking {
+  id                                String               @id @default(uuid())
+  techProfileId                     String
+  customerId                        String
+  techServiceId                     String
+  requestKey                        String
+  serviceNameSnapshot               String
+  durationMinutesSnapshot           Int
+  startingPriceCentsSnapshot        Int
+  timeZoneSnapshot                  String
+  cancellationCutoffMinutesSnapshot Int
+  version                           Int                  @default(0)
+  startAt                           DateTime             @db.Timestamptz(3)
+  endAt                             DateTime             @db.Timestamptz(3)
+  blockedUntilAt                    DateTime             @db.Timestamptz(3)
+  status                            BookingStatus        @default(CONFIRMED)
+  canceledAt                        DateTime?
+  canceledByUserId                  String?
+  createdAt                         DateTime             @default(now())
+  updatedAt                         DateTime             @updatedAt
+  techProfile                       TechProfile          @relation(fields: [techProfileId], references: [id], onDelete: Restrict)
+  customer                          User                 @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
+  techService                       TechService          @relation(fields: [techServiceId], references: [id], onDelete: Restrict)
+  canceledBy                        User?                @relation("CanceledBookings", fields: [canceledByUserId], references: [id], onDelete: SetNull)
+  notifications                     NotificationOutbox[]
+  bookingReschedules                BookingReschedule[]
+
+  @@unique([customerId, requestKey])
+  @@index([techProfileId, startAt])
+  @@index([customerId, startAt])
+  @@index([status, startAt])
+}
+
+model BookingReschedule {
+  id                String   @id @default(uuid())
+  bookingId         String
+  changedByUserId   String
+  requestKey        String
+  oldStartAt        DateTime @db.Timestamptz(3)
+  oldEndAt          DateTime @db.Timestamptz(3)
+  oldBlockedUntilAt DateTime @db.Timestamptz(3)
+  newStartAt        DateTime @db.Timestamptz(3)
+  newEndAt          DateTime @db.Timestamptz(3)
+  newBlockedUntilAt DateTime @db.Timestamptz(3)
+  reason            String?
+  createdAt         DateTime @default(now())
+  booking           Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([bookingId, requestKey])
+  @@index([bookingId, createdAt])
+}
+
+model NotificationOutbox {
+  id             String    @id @default(uuid())
+  bookingId      String
+  eventKey       String    @unique
+  messageKind    String
+  recipientEmail String
+  recipientName  String?
+  payload        Json
+  attempts       Int       @default(0)
+  nextAttemptAt  DateTime? @default(now())
+  leasedAt       DateTime?
+  sentAt         DateTime?
+  brevoMessageId String?
+  lastError      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  booking        Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([nextAttemptAt])
+}
+
+model Conversation {
+  id            String                    @id @default(uuid())
+  customerId    String
+  techProfileId String
+  status        ConversationStatus        @default(PENDING)
+  requestedAt   DateTime
+  acceptedAt    DateTime?
+  declinedAt    DateTime?
+  lastMessageAt DateTime
+  stateVersion  BigInt                    @default(0)
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  customer      User                      @relation("CustomerConversations", fields: [customerId], references: [id], onDelete: Restrict)
+  techProfile   TechProfile               @relation(fields: [techProfileId], references: [id], onDelete: Restrict)
+  participants  ConversationParticipant[]
+  messages      Message[]
+  deliveries    MessagingDeliveryOutbox[]
+
+  @@unique([customerId, techProfileId])
+  @@index([customerId, lastMessageAt])
+  @@index([techProfileId, lastMessageAt])
+  @@index([status, lastMessageAt])
+}
+
+model ConversationParticipant {
+  id                              String       @id @default(uuid())
+  conversationId                  String
+  userId                          String
+  role                            UserRole
+  lastReadSequence                BigInt       @default(0)
+  archivedAt                      DateTime?
+  lastEmailAlertAt                DateTime?
+  emailAlertReservationDeliveryId String?
+  emailAlertReservedAt            DateTime?
+  createdAt                       DateTime     @default(now())
+  updatedAt                       DateTime     @updatedAt
+  conversation                    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user                            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, archivedAt])
+  @@index([userId, conversationId, lastReadSequence])
+  @@index([emailAlertReservationDeliveryId])
+}
+
+model Message {
+  id              String                    @id @default(uuid())
+  sequence        BigInt                    @unique @default(autoincrement())
+  conversationId  String
+  senderUserId    String
+  kind            MessageKind
+  body            String
+  clientRequestId String
+  createdAt       DateTime                  @default(now())
+  conversation    Conversation              @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          User                      @relation("SentMessages", fields: [senderUserId], references: [id], onDelete: Restrict)
+  deliveries      MessagingDeliveryOutbox[]
+
+  @@unique([senderUserId, clientRequestId])
+  @@index([conversationId, sequence])
+}
+
+model MessagingBlock {
+  id            String   @id @default(uuid())
+  blockerUserId String
+  blockedUserId String
+  createdAt     DateTime @default(now())
+  blocker       User     @relation("MessagingBlocker", fields: [blockerUserId], references: [id], onDelete: Cascade)
+  blocked       User     @relation("MessagingBlocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerUserId, blockedUserId])
+  @@index([blockedUserId])
+}
+
+model MessagingDeliveryOutbox {
+  id              String                @id @default(uuid())
+  eventKey        String                @unique
+  deliveryKind    MessagingDeliveryKind
+  conversationId  String
+  messageId       String?
+  recipientUserId String
+  payload         Json
+  attempts        Int                   @default(0)
+  nextAttemptAt   DateTime?             @default(now())
+  leasedAt        DateTime?
+  processedAt     DateTime?
+  lastError       String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  conversation    Conversation          @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message         Message?              @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  recipient       User                  @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@index([nextAttemptAt, processedAt])
+  @@index([recipientUserId, createdAt])
+}
+
+model ProfileMedia {
+  id            String           @id @default(uuid())
+  techProfileId String
+  techProfile   TechProfile      @relation(fields: [techProfileId], references: [id], onDelete: Cascade)
+  role          ProfileMediaRole @default(GALLERY)
+  storagePath   String           @unique
+  imageDataUrl  String?
+  altText       String?
+  sortOrder     Int              @default(0)
+  createdAt     DateTime         @default(now())
+
+  @@index([techProfileId, role, sortOrder])
+  @@map("PortfolioImage")
+}
+
+model Review {
+  id            String      @id @default(uuid())
+  techProfileId String
+  techProfile   TechProfile @relation(fields: [techProfileId], references: [id], onDelete: Cascade)
+  reviewerId    String
+  reviewer      User        @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  rating        Int
+  comment       String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([techProfileId, reviewerId])
+  @@index([techProfileId, createdAt])
+}
+
+model SavedTech {
+  customerId    String
+  techProfileId String
+  createdAt     DateTime    @default(now())
+  customer      User        @relation("CustomerSavedTechs", fields: [customerId], references: [id], onDelete: Cascade)
+  techProfile   TechProfile @relation(fields: [techProfileId], references: [id], onDelete: Cascade)
+
+  @@id([customerId, techProfileId])
+  @@index([customerId, createdAt])
+}
+
+model Referral {
+  id                    String         @id @default(uuid())
+  referrerTechProfileId String
+  referrerTechProfile   TechProfile    @relation("Referrer", fields: [referrerTechProfileId], references: [id], onDelete: Cascade)
+  referredTechProfileId String         @unique
+  referredTechProfile   TechProfile    @relation("Referred", fields: [referredTechProfileId], references: [id], onDelete: Cascade)
+  referralCodeUsed      String
+  status                ReferralStatus @default(PENDING)
+  rewardType            String         @default("free_month")
+  creditedAt            DateTime?
+  createdAt             DateTime       @default(now())
+
+  @@index([referrerTechProfileId])
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  techProfileId        String             @unique
+  techProfile          TechProfile        @relation(fields: [techProfileId], references: [id], onDelete: Cascade)
+  status               SubscriptionStatus @default(FREE)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  stripeStatus         String?
+  plan                 String?
+  interval             String?
+  stripePriceId        String?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  cancelAt             DateTime?
+  billingVersion       Int                @default(0)
+  freeMonthCredits     Int                @default(0)
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  attempts             CheckoutAttempt[]
+  customerCreation     StripeCustomerCreation?
+}
+
+model Report {
+  id                    String       @id @default(uuid())
+  reporterId            String?
+  reporter              User?        @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  reportedTechProfileId String?
+  reportedTechProfile   TechProfile? @relation(fields: [reportedTechProfileId], references: [id], onDelete: Cascade)
+  reportedReviewId      String?
+  reason                String
+  status                ReportStatus @default(OPEN)
+  createdAt             DateTime     @default(now())
+  resolvedAt            DateTime?
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetRequest {
+  id            String    @id @default(uuid())
+  email         String
+  createdAt     DateTime  @default(now())
+  availableAt   DateTime  @default(now())
+  attempts      Int       @default(0)
+  leaseUntil    DateTime?
+  claimId       String?   @unique
+  completedAt   DateTime?
+  failedAt      DateTime?
+  sendStartedAt DateTime?
+
+  @@index([completedAt, availableAt])
+}
+
+model PasswordResetCooldown {
+  email         String   @id
+  nextAllowedAt DateTime
+
+  @@index([nextAllowedAt])
+}
+
+model PasswordResetIpLimit {
+  ip              String   @id @db.Inet
+  requestCount    Int
+  windowStartedAt DateTime @db.Timestamptz(3)
+
+  @@index([windowStartedAt])
+}
+
+model CheckoutAttempt {
+  id               String               @id @default(uuid())
+  subscription     Subscription         @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscriptionId   String
+  plan             String
+  interval         String
+  stripePriceId    String
+  // Nullable only for attempts created before request snapshots were introduced.
+  stripeCustomerId String?
+  userId           String?
+  successUrl       String?
+  cancelUrl        String?
+  state            CheckoutAttemptState @default(CREATING)
+  sessionId        String?              @unique
+  sessionUrl       String?
+  createdAt        DateTime             @default(now())
+  expiresAt        DateTime?
+
+  // One active attempt is enforced by the partial unique index in migration SQL.
+  @@index([subscriptionId])
+}
+
+enum CheckoutAttemptState {
+  CREATING
+  OPEN
+  COMPLETED
+  EXPIRED
+}
+
+// A single durable request per billing account; its UUID is the Stripe retry key.
+model StripeCustomerCreation {
+  id             String       @id @default(uuid())
+  subscriptionId String       @unique
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  email          String
+  userId         String
+  techProfileId  String
+  createdAt      DateTime     @default(now())
+}

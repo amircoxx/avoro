@@ -1,0 +1,27 @@
+.information-page { padding: 72px max(24px, calc((100vw - 1120px) / 2)) 96px; }
+.information-intro { max-width: 850px; padding-bottom: 56px; }
+.information-intro h1 { font-size: clamp(44px, 5.5vw, 76px); line-height: 1.05; letter-spacing: -.04em; margin: 20px 0 24px; text-wrap: balance; }
+.information-intro__description { max-width: 680px; font-size: 18px; line-height: 1.8; color: #59564f; }
+.information-notice { margin-top: 24px; padding: 18px 22px; border-left: 3px solid #654a69; background: #eee8ef; font-size: 14px; line-height: 1.7; }
+.information-body { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 72px; border-top: 1px solid var(--editorial-stone); padding-top: 40px; }
+.information-contents { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; align-self: start; position: sticky; top: 104px; }
+.information-contents a { color: #59564f; font-size: 13px; line-height: 1.6; text-decoration: underline; text-underline-offset: 4px; }
+.information-sections section { scroll-margin-top: 104px; padding-bottom: 36px; margin-bottom: 36px; border-bottom: 1px solid var(--editorial-stone); }
+.information-number { display: block; color: #654a69; font-size: 12px; letter-spacing: .12em; margin-bottom: 12px; }
+.information-sections h2 { font-size: clamp(28px, 3vw, 38px); line-height: 1.15; margin-bottom: 20px; }
+.information-sections section p { font-size: 15px; line-height: 1.9; color: #59564f; margin-top: 16px; }
+.information-next { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; }
+.information-action { display: inline-flex; justify-content: center; align-items: center; gap: 16px; background: var(--editorial-ink); color: var(--editorial-paper); padding: 18px 24px; font-size: 14px; line-height: 1.5; }
+.information-action svg { width: 18px; height: 18px; flex-shrink: 0; }
+.information-action:hover { background: #654a69; }
+.information-contact { font-size: 13px; text-decoration: underline; text-underline-offset: 4px; }
+.information-page a:focus-visible { outline: 2px solid #654a69; outline-offset: 5px; }
+@media (max-width: 760px) {
+  .information-page { padding: 44px 20px 64px; }
+  .information-intro { padding-bottom: 32px; }
+  .information-intro__description { font-size: 16px; }
+  .information-body { grid-template-columns: 1fr; gap: 36px; padding-top: 28px; }
+  .information-contents { position: static; gap: 12px; }
+  .information-sections section { scroll-margin-top: 88px; }
+  .information-action { max-width: 100%; overflow-wrap: anywhere; }
+}

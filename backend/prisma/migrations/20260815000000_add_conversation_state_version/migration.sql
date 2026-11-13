@@ -1,0 +1,2 @@
+ALTER TABLE "Conversation"
+ADD COLUMN "stateVersion" BIGINT NOT NULL DEFAULT 0;

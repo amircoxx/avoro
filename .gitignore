@@ -1,0 +1,21 @@
+node_modules
+.next
+out
+dist
+coverage
+.worktrees
+.superpowers
+# Local environment files; keep the setup example trackable
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+npm-debug.log*
+
+/generated/prisma
+
+# Browser automation artifacts
+/.playwright-cli/
+/frontend/.playwright-cli/
+/output/playwright/
+/frontend/output/playwright/

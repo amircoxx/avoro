@@ -1,0 +1,28 @@
+.muse-recovery__symbol {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 24px;
+  border: 1px solid #cfcac2;
+  border-radius: 50%;
+  color: #11110f;
+}
+.muse-recovery__symbol svg { width: 21px; height: 21px; stroke-width: 1.5; }
+.muse-recovery .muse-auth__heading > span { color: #635e56; }
+.muse-recovery .muse-auth__heading h2 { font-size: clamp(2.4rem, 4vw, 3.3rem); }
+.muse-recovery__hint { margin: -8px 0 0; font-size: .74rem; line-height: 1.6; color: #635e56; }
+.muse-recovery__receipt { margin-top: 24px; padding: 20px 0; border-block: 1px solid #cfcac2; font-size: .8rem; line-height: 1.6; color: #635e56; }
+.muse-recovery__receipt strong { display: block; color: #11110f; overflow-wrap: anywhere; }
+.muse-recovery__receipt p { margin: 12px 0; }
+.muse-recovery__link { text-decoration: underline; text-underline-offset: 3px; font-size: .75rem; color: #11110f; }
+.muse-recovery__error { margin: 0; padding: 12px; background: #fff1ed; color: #8c3022; border-left: 2px solid #8c3022; font-size: .78rem; line-height: 1.5; }
+.muse-recovery__primary { width: 100%; margin-top: 28px; }
+.muse-recovery .muse-auth__input-wrap input { padding-right: 48px; }
+.muse-recovery button:focus-visible { outline: 2px solid #11110f; outline-offset: 4px; }
+.muse-recovery button:disabled { opacity: .55; cursor: not-allowed; }
+.muse-auth__recovery-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.muse-recovery-preview { padding: 12px 24px; border-bottom: 1px solid #cfcac2; background: #f3f0e9; color: #11110f; font-size: .75rem; }
+.muse-recovery-preview p { margin: 0 0 8px; }
+.muse-recovery-preview label { display: inline-grid; gap: 4px; margin-right: 12px; }
+.muse-recovery-preview select { max-width: 100%; padding: 6px; border: 1px solid #817a70; border-radius: 4px; background: white; }
